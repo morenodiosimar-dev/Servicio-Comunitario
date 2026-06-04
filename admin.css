@@ -379,14 +379,6 @@ tr:hover td {
   outline: none;
   transition: all 0.3s ease;
   background: #fbfcfe;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%231a5f7a' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 16px center;
-  padding-right: 40px;
-  cursor: pointer;
 }
 
 .form-group input:focus,
@@ -394,67 +386,6 @@ tr:hover td {
   border-color: var(--accent);
   background: var(--white);
   box-shadow: 0 0 0 4px rgba(79, 172, 254, 0.1);
-}
-
-.form-group select:hover {
-  border-color: var(--primary-light);
-}
-
-.form-group select option {
-  padding: 12px;
-  background: var(--white);
-  color: var(--text-main);
-}
-
-/* Flatpickr Custom Styles - White & Soft Borders */
-.flatpickr-calendar {
-  background: #ffffff;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-  border: 1px solid #f0f0f0;
-  font-family: "Outfit", sans-serif;
-}
-
-.flatpickr-calendar .flatpickr-months {
-  background: #ffffff;
-  border-bottom: 1px solid #f5f5f5;
-  padding: 10px;
-}
-
-.flatpickr-calendar .flatpickr-month {
-  color: #333;
-  font-weight: 500;
-  font-size: 0.95rem;
-}
-
-.flatpickr-calendar .flatpickr-weekday {
-  color: #888;
-  font-weight: 400;
-  font-size: 0.8rem;
-}
-
-.flatpickr-calendar .flatpickr-day {
-  color: #444;
-  border-radius: 4px;
-  font-weight: 400;
-  transition: all 0.1s ease;
-}
-
-.flatpickr-calendar .flatpickr-day:hover {
-  background: #f5f5f5;
-  color: #333;
-}
-
-.flatpickr-calendar .flatpickr-day.selected {
-  background: #e8f4f8;
-  color: #1a5f7a;
-  font-weight: 500;
-  border: 1px solid #d0e8f0;
-}
-
-.flatpickr-calendar .flatpickr-day.today {
-  border: 1px solid #1a5f7a;
-  font-weight: 500;
 }
 
 .btn-submit {
@@ -653,7 +584,9 @@ tr:hover td {
 #tabla-registro-bombonas th:nth-child(8),
 #tabla-registro-bombonas td:nth-child(8),
 #tabla-registro-bombonas th:nth-child(9),
-#tabla-registro-bombonas td:nth-child(9) {
+#tabla-registro-bombonas td:nth-child(9),
+#tabla-registro-bombonas th:nth-child(10),
+#tabla-registro-bombonas td:nth-child(10) {
   text-align: center !important;
   vertical-align: middle;
 }

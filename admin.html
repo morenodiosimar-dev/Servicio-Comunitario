@@ -403,28 +403,37 @@
               <h4>Cantidad de Cilindros</h4>
               <div class="quantities-grid">
                 <div class="qty-item">
-                  <label>Pequeñas</label>
+                  <label>10kg</label>
                   <input
                     type="number"
-                    id="qty-pequena"
+                    id="qty-10kg"
                     min="0"
                     placeholder="0"
                   />
                 </div>
                 <div class="qty-item">
-                  <label>Medianas</label>
+                  <label>18kg</label>
                   <input
                     type="number"
-                    id="qty-mediana"
+                    id="qty-18kg"
                     min="0"
                     placeholder="0"
                   />
                 </div>
                 <div class="qty-item">
-                  <label>Grandes</label>
+                  <label>27kg</label>
                   <input
                     type="number"
-                    id="qty-grande"
+                    id="qty-27kg"
+                    min="0"
+                    placeholder="0"
+                  />
+                </div>
+                <div class="qty-item">
+                  <label>43kg</label>
+                  <input
+                    type="number"
+                    id="qty-43kg"
                     min="0"
                     placeholder="0"
                   />
@@ -450,9 +459,10 @@
                 <th>Sexo</th>
                 <th>Edad</th>
                 <th>Celular</th>
-                <th class="th-cylinders">Peq</th>
-                <th class="th-cylinders">Med</th>
-                <th class="th-cylinders">Gra</th>
+                <th class="th-cylinders">10kg</th>
+                <th class="th-cylinders">18kg</th>
+                <th class="th-cylinders">27kg</th>
+                <th class="th-cylinders">43kg</th>
                 <th>Registro</th>
               </tr>
             </thead>
@@ -478,7 +488,7 @@
               <tr>
                 <th>Cédula</th>
                 <th>Nombre</th>
-                <th>Cilindros (P|M|G)</th>
+                <th>Cilindros (10kg|18kg|27kg|43kg)</th>
                 <th>Fecha Registro</th>
                 <th>Acción</th>
               </tr>
@@ -498,16 +508,20 @@
           <h3>Registrar Compra para: <span id="cliente-nombre"></span></h3>
           <div class="form-grid-bombonas">
             <div class="qty-item">
-              <label>Pequeñas</label>
-              <input type="number" id="v-peq" value="0" min="0" />
+              <label>10kg</label>
+              <input type="number" id="v-10kg" value="0" min="0" />
             </div>
             <div class="qty-item">
-              <label>Medianas</label>
-              <input type="number" id="v-med" value="0" min="0" />
+              <label>18kg</label>
+              <input type="number" id="v-18kg" value="0" min="0" />
             </div>
             <div class="qty-item">
-              <label>Grandes</label>
-              <input type="number" id="v-gra" value="0" min="0" />
+              <label>27kg</label>
+              <input type="number" id="v-27kg" value="0" min="0" />
+            </div>
+            <div class="qty-item">
+              <label>43kg</label>
+              <input type="number" id="v-43kg" value="0" min="0" />
             </div>
             <div class="qty-item">
               <label>Monto Bs.</label>
@@ -545,7 +559,7 @@
             <thead>
               <tr>
                 <th>Beneficiario</th>
-                <th>Cantidades (P|M|G)</th>
+                <th>Cantidades (10kg|18kg|27kg|43kg)</th>
                 <th>Monto (Bs.)</th>
                 <th>Método</th>
                 <th>Referencia</th>
@@ -646,19 +660,9 @@
                     <input type="number" id="edit-carga" min="0" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box;">
                 </div>
                 
-                <div style="margin-bottom: 15px;">
-            <label style="font-weight: bold; display: block; margin-bottom: 5px; color: #444;">Calle</label>
-            <select id="edit-calle" required>
-              <option value="">Seleccione calle</option>
-              <option value="Calle 1">Calle 1</option>
-              <option value="Calle 2">Calle 2</option>
-              <option value="Calle 3">Calle 3</option>
-              <option value="Calle 4">Calle 4</option>
-              <option value="Calle 5">Calle 5</option>
-              <option value="Calle 6">Calle 6</option>
-              <option value="Calle 7">Calle 7</option>
-              <option value="Callejón">Callejón</option>
-            </select>
+                <div style="margin-bottom: 12px;">
+                    <label style="font-weight: bold; display: block; margin-bottom: 5px; color: #444;">Calle / Sector:</label>
+                    <input type="text" id="edit-calle" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box;">
                 </div>
                 
                 <div style="margin-bottom: 15px;">
