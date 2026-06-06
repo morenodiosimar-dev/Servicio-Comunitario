@@ -493,6 +493,49 @@ async function cargarHistorialVentas() {
 }
 
 // 13. Cargar estadísticas por calle
+function renderTarjetasEstadisticasCalles(estadisticas, grid) {
+    estadisticas.forEach(est => {
+        const card = document.createElement('div');
+        card.className = 'stat-card-calle';
+        card.innerHTML = `
+            <div class="calle-header">
+                <h3>${est.calle}</h3>
+            </div>
+            <div class="calle-stats">
+                <div class="stat-row">
+                    <span class="stat-label">Personas:</span>
+                    <span class="stat-value">${est.total_personas}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Con Registro:</span>
+                    <span class="stat-value">${est.personas_con_registro}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Total Cilindros:</span>
+                    <span class="stat-value highlight">${est.total_cilindros || 0}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">10kg:</span>
+                    <span class="stat-value">${est.total_10kg || 0}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">18kg:</span>
+                    <span class="stat-value">${est.total_18kg || 0}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">27kg:</span>
+                    <span class="stat-value">${est.total_27kg || 0}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">43kg:</span>
+                    <span class="stat-value">${est.total_43kg || 0}</span>
+                </div>
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+}
+
 async function cargarEstadisticasCalles() {
     try {
         console.log("Cargando estadísticas por calle...");
@@ -508,48 +551,37 @@ async function cargarEstadisticasCalles() {
             return;
         }
 
-        data.estadisticas.forEach(est => {
-            const card = document.createElement('div');
-            card.className = 'stat-card-calle';
-            card.innerHTML = `
-                <div class="calle-header">
-                    <h3>${est.calle}</h3>
-                </div>
-                <div class="calle-stats">
-                    <div class="stat-row">
-                        <span class="stat-label">Personas:</span>
-                        <span class="stat-value">${est.total_personas}</span>
-                    </div>
-                    <div class="stat-row">
-                        <span class="stat-label">Con Registro:</span>
-                        <span class="stat-value">${est.personas_con_registro}</span>
-                    </div>
-                    <div class="stat-row">
-                        <span class="stat-label">Total Cilindros:</span>
-                        <span class="stat-value highlight">${est.total_cilindros || 0}</span>
-                    </div>
-                    <div class="stat-row">
-                        <span class="stat-label">10kg:</span>
-                        <span class="stat-value">${est.total_10kg || 0}</span>
-                    </div>
-                    <div class="stat-row">
-                        <span class="stat-label">18kg:</span>
-                        <span class="stat-value">${est.total_18kg || 0}</span>
-                    </div>
-                    <div class="stat-row">
-                        <span class="stat-label">27kg:</span>
-                        <span class="stat-value">${est.total_27kg || 0}</span>
-                    </div>
-                    <div class="stat-row">
-                        <span class="stat-label">43kg:</span>
-                        <span class="stat-value">${est.total_43kg || 0}</span>
-                    </div>
-                </div>
-            `;
-            grid.appendChild(card);
-        });
+        renderTarjetasEstadisticasCalles(data.estadisticas, grid);
     } catch (e) {
         console.error("Error al cargar estadísticas por calle:", e);
+    }
+}
+
+async function cargarEstadisticasCallesMiCalle() {
+    try {
+        const datosSesion = sessionStorage.getItem('usuario');
+        const usuarioLogueado = datosSesion ? JSON.parse(datosSesion) : null;
+        if (!usuarioLogueado || !usuarioLogueado.calle) return;
+
+        const response = await fetch('/bombonas/estadisticas-calles');
+        const data = await response.json();
+        const grid = document.getElementById('estadisticas-calles-grid');
+
+        if (!grid) return;
+        grid.innerHTML = '';
+
+        const estadisticas = (data.estadisticas || []).filter(
+            (est) => est.calle === usuarioLogueado.calle
+        );
+
+        if (estadisticas.length === 0) {
+            grid.innerHTML = '<p style="text-align:center;">No hay datos de estadísticas para su calle</p>';
+            return;
+        }
+
+        renderTarjetasEstadisticasCalles(estadisticas, grid);
+    } catch (e) {
+        console.error("Error al cargar estadísticas de mi calle:", e);
     }
 }
 

@@ -98,19 +98,28 @@ async function agregarTablaCompradoresPdf(doc, calleFiltro, periodoDias, startY)
     });
 }
 
-async function descargarPdfEstadisticasCalles() {
+async function descargarPdfEstadisticasCalles(calleFiltro) {
     try {
         const response = await fetch('/bombonas/estadisticas-calles');
         const data = await response.json();
 
-        if (!data.estadisticas || data.estadisticas.length === 0) {
+        let estadisticas = data.estadisticas || [];
+        if (calleFiltro) {
+            estadisticas = estadisticas.filter((est) => est.calle === calleFiltro);
+        }
+
+        if (estadisticas.length === 0) {
             alert('No hay datos de estadísticas por calle para exportar.');
             return;
         }
 
-        const doc = crearPdfBase('Estadísticas por Calle — Inventario de Cilindros');
+        const titulo = calleFiltro
+            ? `Estadísticas por Calle — ${calleFiltro} — Inventario de Cilindros`
+            : 'Estadísticas por Calle — Inventario de Cilindros';
 
-        const body = data.estadisticas.map((est) => [
+        const doc = crearPdfBase(titulo);
+
+        const body = estadisticas.map((est) => [
             est.calle,
             String(toNum(est.total_personas)),
             String(toNum(est.personas_con_registro)),
@@ -121,29 +130,31 @@ async function descargarPdfEstadisticasCalles() {
             String(toNum(est.total_43kg)),
         ]);
 
-        const totales = data.estadisticas.reduce(
-            (acc, est) => ({
-                personas: acc.personas + toNum(est.total_personas),
-                registro: acc.registro + toNum(est.personas_con_registro),
-                cilindros: acc.cilindros + toNum(est.total_cilindros),
-                kg10: acc.kg10 + toNum(est.total_10kg),
-                kg18: acc.kg18 + toNum(est.total_18kg),
-                kg27: acc.kg27 + toNum(est.total_27kg),
-                kg43: acc.kg43 + toNum(est.total_43kg),
-            }),
-            { personas: 0, registro: 0, cilindros: 0, kg10: 0, kg18: 0, kg27: 0, kg43: 0 }
-        );
+        if (!calleFiltro) {
+            const totales = estadisticas.reduce(
+                (acc, est) => ({
+                    personas: acc.personas + toNum(est.total_personas),
+                    registro: acc.registro + toNum(est.personas_con_registro),
+                    cilindros: acc.cilindros + toNum(est.total_cilindros),
+                    kg10: acc.kg10 + toNum(est.total_10kg),
+                    kg18: acc.kg18 + toNum(est.total_18kg),
+                    kg27: acc.kg27 + toNum(est.total_27kg),
+                    kg43: acc.kg43 + toNum(est.total_43kg),
+                }),
+                { personas: 0, registro: 0, cilindros: 0, kg10: 0, kg18: 0, kg27: 0, kg43: 0 }
+            );
 
-        body.push([
-            'TOTAL',
-            String(totales.personas),
-            String(totales.registro),
-            String(totales.cilindros),
-            String(totales.kg10),
-            String(totales.kg18),
-            String(totales.kg27),
-            String(totales.kg43),
-        ]);
+            body.push([
+                'TOTAL',
+                String(totales.personas),
+                String(totales.registro),
+                String(totales.cilindros),
+                String(totales.kg10),
+                String(totales.kg18),
+                String(totales.kg27),
+                String(totales.kg43),
+            ]);
+        }
 
         doc.autoTable({
             ...estiloTabla(),
@@ -154,10 +165,11 @@ async function descargarPdfEstadisticasCalles() {
 
         const periodoDias = 15;
         const startYCompradores = doc.lastAutoTable.finalY + 12;
-        await agregarTablaCompradoresPdf(doc, null, periodoDias, startYCompradores);
+        await agregarTablaCompradoresPdf(doc, calleFiltro || null, periodoDias, startYCompradores);
 
         const fecha = new Date().toISOString().slice(0, 10);
-        descargarPdf(doc, `estadisticas-calles-${fecha}.pdf`);
+        const sufijo = calleFiltro ? calleFiltro.replace(/\s+/g, '-').toLowerCase() : 'todas';
+        descargarPdf(doc, `estadisticas-calles-${sufijo}-${fecha}.pdf`);
     } catch (error) {
         console.error('Error al generar PDF de estadísticas por calle:', error);
         alert('No se pudo generar el PDF. Intente de nuevo.');
@@ -254,4 +266,14 @@ function descargarPdfEstadisticasVentasMiCalle() {
         return;
     }
     descargarPdfEstadisticasVentas(usuarioLogueado.calle);
+}
+
+function descargarPdfEstadisticasCallesMiCalle() {
+    const datosSesion = sessionStorage.getItem('usuario');
+    const usuarioLogueado = datosSesion ? JSON.parse(datosSesion) : null;
+    if (!usuarioLogueado || !usuarioLogueado.calle) {
+        alert('No se encontró la calle asignada a su usuario.');
+        return;
+    }
+    descargarPdfEstadisticasCalles(usuarioLogueado.calle);
 }

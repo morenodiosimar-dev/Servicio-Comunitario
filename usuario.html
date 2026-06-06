@@ -195,6 +195,18 @@
                     <tbody id="tabla-registro-bombonas"></tbody>
                 </table>
             </div>
+
+            <div class="table-container mt-2" id="estadisticas-calles-container">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                    <h3 style="color: var(--primary); margin: 0;"><i class="fas fa-chart-bar"></i> Estadísticas por Calle — Inventario</h3>
+                    <button class="btn-download-pdf" onclick="descargarPdfEstadisticasCallesMiCalle()">
+                        <i class="fas fa-file-pdf"></i> Descargar PDF
+                    </button>
+                </div>
+                <div class="stats-grid-calles" id="estadisticas-calles-grid">
+                    <!-- Se llenará dinámicamente -->
+                </div>
+            </div>
         </div>
 
         <!-- Gestión de Pagos Section -->
@@ -349,6 +361,7 @@
                 if (id === 'registro-bombonas') {
                     cargarPersonasParaBuscadorBombonas();
                     cargarTablaRegistroBombonas();
+                    cargarEstadisticasCallesMiCalle();
 
                     const secCant = document.getElementById('seccion-cantidades');
                     if(secCant) secCant.style.display = 'none';
