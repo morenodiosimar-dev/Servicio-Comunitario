@@ -46,10 +46,16 @@ function mostrarSeccion(id, element) {
         if (id === 'lista-personas') cargarPersonas();
         
         if (id === 'registro-bombonas') {
+            personaSeleccionada = null;
+            const busqueda = document.getElementById('busqueda-persona');
+            if (busqueda) busqueda.value = '';
             cargarPersonasParaBuscadorBombonas();
             cargarTablaRegistroBombonas();
+            if (document.getElementById('estadisticas-calles-grid')) {
+                cargarEstadisticasCallesMiCalle();
+            }
             const secCant = document.getElementById('seccion-cantidades');
-            if(secCant) secCant.style.display = 'none';
+            if (secCant) secCant.style.display = 'none';
         }
 
         if (id === 'gestion-compras-modulo') {
@@ -75,76 +81,125 @@ function mostrarSeccion(id, element) {
 
 // --- GESTIÓN DE BOMBONAS ---
 
-// 2. Cargar personas
+// 2. Cargar TODAS las personas registradas para el buscador de bombonas
 async function cargarPersonasParaBuscadorBombonas() {
     try {
         const datosSesion = sessionStorage.getItem('usuario');
         const usuarioLogueado = datosSesion ? JSON.parse(datosSesion) : null;
-        let url = '/personas/sin-bombonas';
-        if (usuarioLogueado && usuarioLogueado.id_rol === 2 && usuarioLogueado.calle) {
-            url += `?calle=${encodeURIComponent(usuarioLogueado.calle)}`;
-        }
-        
-        const response = await fetch(url);
+
+        const response = await fetch('/personas');
         const data = await response.json();
-        
-        listaPersonasBombona = data.personas || [];
-        console.log("Personas disponibles para registro:", listaPersonasBombona.length);
-        filtrarPersonasParaBombona(); 
+        let personas = data.personas || [];
+
+        if (usuarioLogueado && usuarioLogueado.id_rol === 2 && usuarioLogueado.calle) {
+            personas = personas.filter(p => p.calle === usuarioLogueado.calle);
+        }
+
+        listaPersonasBombona = personas;
+        filtrarPersonasParaBombona();
     } catch (e) {
         console.error("Error cargando buscador:", e);
     }
 }
 
-// 3. Filtrar el select
+// 3. Filtrar resultados dinámicamente (sin límite de resultados)
 function filtrarPersonasParaBombona() {
     const inputBusqueda = document.getElementById('busqueda-persona');
-    const busqueda = inputBusqueda ? inputBusqueda.value.toLowerCase() : '';
-    const select = document.getElementById('select-persona-bombona');
-    
-    if(!select) return;
-    select.innerHTML = '';
-    
-    // Si no hay personas disponibles
+    const busqueda = inputBusqueda ? inputBusqueda.value.toLowerCase().trim() : '';
+    const contenedor = document.getElementById('lista-resultados-persona');
+
+    if (!contenedor) return;
+
+    if (personaSeleccionada && inputBusqueda) {
+        const textoSeleccion = `${personaSeleccionada.cedula} - ${personaSeleccionada.nombre} ${personaSeleccionada.apellido}`.toLowerCase();
+        if (busqueda !== textoSeleccion) {
+            personaSeleccionada = null;
+        }
+    }
+
+    contenedor.innerHTML = '';
+
     if (listaPersonasBombona.length === 0) {
-        const option = document.createElement('option');
-        option.textContent = "No hay personas pendientes por registro";
-        select.appendChild(option);
+        contenedor.innerHTML = '<div class="resultado-vacio">No hay personas registradas</div>';
         return;
     }
 
-    const filtrados = listaPersonasBombona.filter(p => 
-        p.cedula.toString().includes(busqueda) || 
-        p.nombre.toLowerCase().includes(busqueda) ||
-        p.apellido.toLowerCase().includes(busqueda)
-    );
+    const filtrados = busqueda
+        ? listaPersonasBombona.filter(p =>
+            p.cedula.toString().includes(busqueda) ||
+            (p.nombre && p.nombre.toLowerCase().includes(busqueda)) ||
+            (p.apellido && p.apellido.toLowerCase().includes(busqueda)) ||
+            `${p.nombre} ${p.apellido}`.toLowerCase().includes(busqueda)
+        )
+        : listaPersonasBombona;
+
+    if (filtrados.length === 0) {
+        contenedor.innerHTML = '<div class="resultado-vacio">No se encontraron resultados</div>';
+        return;
+    }
+
+    const contador = document.getElementById('contador-resultados-bombona');
+    if (contador) contador.textContent = `${filtrados.length} persona${filtrados.length !== 1 ? 's' : ''}`;
 
     filtrados.forEach(p => {
-        const option = document.createElement('option');
-        option.value = p.id_persona;
-        option.textContent = `${p.cedula} - ${p.nombre} ${p.apellido}`;
-        select.appendChild(option);
+        const item = document.createElement('div');
+        item.className = 'resultado-persona-item';
+        item.dataset.id = p.id_persona;
+        item.innerHTML = `
+            <div class="resultado-persona-info">
+                <span class="resultado-cedula"><i class="fas fa-id-card"></i> ${p.cedula}</span>
+                <span class="resultado-nombre">${p.nombre} ${p.apellido}</span>
+            </div>
+            <i class="fas fa-chevron-right resultado-arrow"></i>`;
+        item.onclick = () => seleccionarPersonaBombona(p, item);
+        contenedor.appendChild(item);
     });
+}
+
+function seleccionarPersonaBombona(persona, elemento) {
+    document.querySelectorAll('.resultado-persona-item').forEach(el => el.classList.remove('selected'));
+    if (elemento) elemento.classList.add('selected');
+    personaSeleccionada = persona;
+
+    const inputBusqueda = document.getElementById('busqueda-persona');
+    if (inputBusqueda) {
+        inputBusqueda.value = `${persona.cedula} - ${persona.nombre} ${persona.apellido}`;
+    }
 }
 
 // 4. Al dar click en "Seleccionar"
 function prepararFormularioRegistro() {
-    const select = document.getElementById('select-persona-bombona');
-    const idPersona = select.value;
-    
-    if(!idPersona) return alert("Por favor, selecciona una persona de la lista.");
-
-    personaSeleccionada = listaPersonasBombona.find(p => p.id_persona == idPersona);
-
-    if (personaSeleccionada) {
-        document.getElementById('seccion-cantidades').style.display = 'block';
-        
-        // Limpiamos los inputs para un nuevo registro
-        document.getElementById('qty-10kg').value = '';
-        document.getElementById('qty-18kg').value = '';
-        document.getElementById('qty-27kg').value = '';
-        document.getElementById('qty-43kg').value = '';
+    if (!personaSeleccionada) {
+        const seleccionado = document.querySelector('.resultado-persona-item.selected');
+        if (seleccionado) {
+            const idPersona = seleccionado.dataset.id;
+            personaSeleccionada = listaPersonasBombona.find(p => p.id_persona == idPersona);
+        }
     }
+
+    if (!personaSeleccionada) {
+        if (typeof mostrarMensajeExito === 'function') {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'form-validation-alert';
+            alertDiv.style.display = 'flex';
+            alertDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> Por favor, selecciona una persona de la lista.';
+            const searchBox = document.querySelector('.form-group-search');
+            if (searchBox && !searchBox.querySelector('.form-validation-alert')) {
+                searchBox.insertBefore(alertDiv, searchBox.firstChild);
+                setTimeout(() => alertDiv.remove(), 4000);
+            }
+        } else {
+            alert("Por favor, selecciona una persona de la lista.");
+        }
+        return;
+    }
+
+    document.getElementById('seccion-cantidades').style.display = 'block';
+    document.getElementById('qty-10kg').value = '';
+    document.getElementById('qty-18kg').value = '';
+    document.getElementById('qty-27kg').value = '';
+    document.getElementById('qty-43kg').value = '';
+    document.getElementById('seccion-cantidades').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // 5. Guardar Registro
@@ -346,6 +401,8 @@ function seleccionarParaCompra(registro) {
     document.getElementById('v-27kg').value = 0;
     document.getElementById('v-43kg').value = 0;
     document.getElementById('v-monto').value = '';
+    if (document.getElementById('v-referencia-texto')) document.getElementById('v-referencia-texto').value = '';
+    if (typeof resetFileUpload === 'function') resetFileUpload('v-referencia-foto');
 }
 
 // 11. Validar y procesar venta
@@ -415,6 +472,7 @@ async function validarYProcesarVenta() {
             document.getElementById('v-monto').value = '';
             if (document.getElementById('v-referencia-texto')) document.getElementById('v-referencia-texto').value = '';
             if (document.getElementById('v-referencia-foto')) document.getElementById('v-referencia-foto').value = '';
+            if (typeof resetFileUpload === 'function') resetFileUpload('v-referencia-foto');
 
             cargarTablaParaVentas();
             cargarHistorialVentas();
@@ -559,29 +617,51 @@ async function cargarEstadisticasCalles() {
 
 async function cargarEstadisticasCallesMiCalle() {
     try {
+        const grid = document.getElementById('estadisticas-calles-grid');
+        if (!grid) return;
+
         const datosSesion = sessionStorage.getItem('usuario');
         const usuarioLogueado = datosSesion ? JSON.parse(datosSesion) : null;
-        if (!usuarioLogueado || !usuarioLogueado.calle) return;
+        let calleUsuario = (usuarioLogueado?.calle || '').trim();
+
+        if (!calleUsuario && usuarioLogueado?.cedula) {
+            const resPersonas = await fetch('/personas');
+            const dataPersonas = await resPersonas.json();
+            const persona = (dataPersonas.personas || []).find(
+                p => String(p.cedula) === String(usuarioLogueado.cedula)
+            );
+            if (persona?.calle) {
+                calleUsuario = persona.calle.trim();
+                usuarioLogueado.calle = calleUsuario;
+                sessionStorage.setItem('usuario', JSON.stringify(usuarioLogueado));
+            }
+        }
+
+        if (!calleUsuario) {
+            grid.innerHTML = '<p style="text-align:center; color: var(--text-muted); padding: 2rem;">No tiene una calle asignada. Contacte al administrador.</p>';
+            return;
+        }
 
         const response = await fetch('/bombonas/estadisticas-calles');
         const data = await response.json();
-        const grid = document.getElementById('estadisticas-calles-grid');
-
-        if (!grid) return;
         grid.innerHTML = '';
 
         const estadisticas = (data.estadisticas || []).filter(
-            (est) => est.calle === usuarioLogueado.calle
+            (est) => est.calle && est.calle.trim() === calleUsuario
         );
 
         if (estadisticas.length === 0) {
-            grid.innerHTML = '<p style="text-align:center;">No hay datos de estadísticas para su calle</p>';
+            grid.innerHTML = `<p style="text-align:center; padding: 2rem;">No hay datos de inventario para <strong>${calleUsuario}</strong></p>`;
             return;
         }
 
         renderTarjetasEstadisticasCalles(estadisticas, grid);
     } catch (e) {
         console.error("Error al cargar estadísticas de mi calle:", e);
+        const grid = document.getElementById('estadisticas-calles-grid');
+        if (grid) {
+            grid.innerHTML = '<p style="text-align:center; color: var(--danger); padding: 2rem;">Error al cargar estadísticas</p>';
+        }
     }
 }
 
@@ -694,12 +774,10 @@ async function cargarEstadisticasVentaMiCalle() {
     }
 }
 
-// Cargas iniciales al abrir la web
-window.onload = () => {
-    if (typeof cargarEstadisticas === 'function') {
-        cargarEstadisticas();
-    }
-};
+// Cargas iniciales al abrir la web (solo si no hay otro handler en la página)
+if (!window._scriptsJsLoaded) {
+    window._scriptsJsLoaded = true;
+}
 
 function abrirModalEditar(id_persona, cedula, nombre, apellido, sexo, edad, id_estado_civil, celular, carga_familiar, calle, estatus, fecha_registro) {
     document.getElementById("edit-id").value = id_persona;
@@ -719,17 +797,40 @@ function abrirModalEditar(id_persona, cedula, nombre, apellido, sexo, edad, id_e
         const año = fecha.getFullYear();
         const mes = String(fecha.getMonth() + 1).padStart(2, '0');
         const dia = String(fecha.getDate()).padStart(2, '0');
-        document.getElementById("edit-fecha").value = `${año}-${mes}-${dia}`;
+        const fechaInput = document.getElementById("edit-fecha");
+        if (fechaInput._flatpickr) {
+            fechaInput._flatpickr.setDate(`${año}-${mes}-${dia}`, true);
+        } else {
+            fechaInput.value = `${año}-${mes}-${dia}`;
+        }
     } else {
-        document.getElementById("edit-fecha").value = "";
+        const fechaInput = document.getElementById("edit-fecha");
+        if (fechaInput._flatpickr) {
+            fechaInput._flatpickr.clear();
+        } else {
+            fechaInput.value = "";
+        }
     }
     
-    document.getElementById("modal-editar-persona").style.display = "block";
+    const modal = document.getElementById("modal-editar-persona");
+    modal.style.display = "flex";
+    document.body.style.overflow = "hidden";
+
+    modal.onclick = (e) => {
+        if (e.target === modal) cerrarModalEditar();
+    };
+    
+    if (typeof initFlatpickr === 'function') {
+        setTimeout(() => initFlatpickr(), 100);
+    }
+    if (typeof initTomSelect === 'function') {
+        setTimeout(() => initTomSelect(), 100);
+    }
 }
 
-// FUNCIÓN PARA CERRAR EL MODAL
 function cerrarModalEditar() {
     document.getElementById("modal-editar-persona").style.display = "none";
+    document.body.style.overflow = "";
 }
 
 // EVENTO PARA PROCESAR EL CAMBIO EN LA BASE DE DATOS
@@ -751,12 +852,18 @@ if (formEditar) {
         const calle = document.getElementById("edit-calle").value.trim();
         const estatus = document.getElementById("edit-estatus").value;
         const fecha_registro = document.getElementById("edit-fecha").value;
+        const fechaInput = document.getElementById("edit-fecha");
+        let fechaFinal = fecha_registro;
+        if (fechaInput._flatpickr && fechaInput._flatpickr.selectedDates[0]) {
+            fechaFinal = fechaInput._flatpickr.selectedDates[0].toISOString().split('T')[0];
+        }
 
         const regexSoloLetas = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/; 
         const regexSoloNumeros = /^\d+$/;                   
 
+        if (!validarFormulario(formEditar)) return;
+
         if (!cedula || !nombre || !apellido || !sexo) {
-            alert("Los campos Cédula, Nombre, Apellido y Sexo son obligatorios.");
             return;
         }
 
@@ -801,7 +908,7 @@ if (formEditar) {
             carga_familiar: carga_familiar || 0,
             calle: calle || null,
             estatus: estatus || 'Activo',
-            fecha_registro: fecha_registro || null
+            fecha_registro: fechaFinal || null
         };
 
         try {
@@ -814,9 +921,9 @@ if (formEditar) {
             const result = await response.json();
 
             if (response.ok) {
-                alert("¡Cambios guardados con éxito en el sistema!");
+                mostrarMensajeExito('¡Cambios guardados!', 'Los datos se actualizaron correctamente en el sistema.', 'fa-circle-check');
                 cerrarModalEditar();
-                cargarPersonas(); 
+                if (typeof cargarPersonas === 'function') cargarPersonas();
             } else {
                 alert(result.error || "Ocurrió un error al actualizar");
             }

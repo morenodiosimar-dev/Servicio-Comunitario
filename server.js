@@ -242,6 +242,35 @@ app.put('/personas/:id_persona', (req, res) => {
     });
 });
 
+// CAMBIAR CONTRASEÑA
+app.put('/usuarios/cambiar-password', (req, res) => {
+    const { id_usuario, password_actual, password_nueva } = req.body;
+
+    if (!id_usuario || !password_actual || !password_nueva) {
+        return res.status(400).json({ error: 'Todos los campos son requeridos' });
+    }
+
+    if (password_nueva.length < 8 || !/\d/.test(password_nueva)) {
+        return res.status(400).json({ error: 'La nueva contraseña debe tener mínimo 8 caracteres y al menos 1 número' });
+    }
+
+    const queryCheck = 'SELECT password_hash FROM usuarios WHERE id_usuario = ?';
+    db.query(queryCheck, [id_usuario], (err, results) => {
+        if (err) return res.status(500).json({ error: 'Error al verificar contraseña' });
+        if (results.length === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+        if (results[0].password_hash !== password_actual) {
+            return res.status(401).json({ error: 'Contraseña actual incorrecta' });
+        }
+
+        const queryUpdate = 'UPDATE usuarios SET password_hash = ? WHERE id_usuario = ?';
+        db.query(queryUpdate, [password_nueva, id_usuario], (errUpdate) => {
+            if (errUpdate) return res.status(500).json({ error: 'Error al actualizar contraseña' });
+            res.json({ message: 'Contraseña actualizada correctamente' });
+        });
+    });
+});
+
 // CREAR USUARIO
 app.post('/usuarios', (req, res) => {
     const { id_persona, id_rol, usuario_login, password } = req.body;

@@ -7,6 +7,8 @@
     <title>Panel de Trabajo | Gestión Social</title>
     <link rel="stylesheet" href="admin.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
@@ -52,9 +54,6 @@
                 <h1 id="panel-title">Panel de Trabajo</h1>
             </div>
             <div class="user-profile">
-                <div class="stat-info" style="text-align: right; margin-right: 15px;">
-                    <span class="badge" style="background: var(--secondary); color: white;">Operador Activo</span>
-                </div>
                 <img id="user-avatar-top" src="" alt="Avatar" style="width: 45px; border-radius: 12px;">
             </div>
         </header>
@@ -103,12 +102,14 @@
                             <input
                                 type="text"
                                 id="busqueda-persona"
-                                placeholder="Buscar..."
+                                placeholder="Buscar por cédula o nombre..."
                                 oninput="filtrarPersonasParaBombona()"
+                                onfocus="filtrarPersonasParaBombona()"
                             />
                             <i class="fas fa-search search-icon"></i>
                         </div>
-                        <select id="select-persona-bombona" size="3"></select>
+                        <div id="lista-resultados-persona" class="resultados-persona-container"></div>
+                        <div id="contador-resultados-bombona" class="contador-resultados"></div>
                     </div>
 
                     <div class="form-group-action">
@@ -281,7 +282,13 @@
                     </div>
                     <div class="qty-item">
                         <label>Referencia (Foto)</label>
-                        <input type="file" id="v-referencia-foto" accept="image/*" />
+                        <div class="file-upload-wrapper">
+                            <input type="file" id="v-referencia-foto" accept="image/*" class="file-upload-input" />
+                            <label for="v-referencia-foto" class="file-upload-btn">
+                                <i class="fas fa-camera"></i> Seleccionar imagen
+                            </label>
+                            <span class="file-upload-name" id="v-referencia-foto-name">Ningún archivo seleccionado</span>
+                        </div>
                     </div>
                     <button
                         class="btn-submit"
@@ -359,6 +366,9 @@
 
                 // EJECUTAR CARGAS ESPECÍFICAS
                 if (id === 'registro-bombonas') {
+                    personaSeleccionada = null;
+                    const busqueda = document.getElementById('busqueda-persona');
+                    if (busqueda) busqueda.value = '';
                     cargarPersonasParaBuscadorBombonas();
                     cargarTablaRegistroBombonas();
                     cargarEstadisticasCallesMiCalle();
@@ -408,7 +418,14 @@
         }
 
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+    <script src="ui-enhancements.js"></script>
     <script src="scripts.js"></script>
+    <script>
+        initUIEnhancements({ badgeText: 'Operador Activo' });
+    </script>
     <script src="pdf-export.js"></script>
 </body>
 
