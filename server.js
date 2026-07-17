@@ -502,7 +502,7 @@ app.post('/bombonas/registrar', async (req, res) => {
 app.get('/bombonas/registros/detallado', (req, res) => {
     const { calle } = req.query;
     let query = `
-        SELECT p.cedula, p.nombre, p.apellido, p.sexo, p.edad, p.celular, rb.id_registro, p.calle,
+        SELECT p.cedula, p.nombre, p.apellido, p.sexo, p.edad, p.celular, rb.id_registro, rb.id_persona, p.calle,
                rb.bombonas_10kg, rb.bombonas_18kg, rb.bombonas_27kg, rb.bombonas_43kg, rb.fecha_actualizacion as fecha_registro
         FROM registro_bombonas rb
         JOIN personas p ON rb.id_persona = p.id_persona
@@ -550,6 +550,12 @@ app.delete('/bombonas/eliminar/:id', (req, res) => {
 app.post('/bombonas/comprar', (req, res) => {
     const { id_registro, id_persona, qty10, qty18, qty27, qty43, monto, metodo, referencia_texto, referencia_foto } = req.body;
 
+    const montoNum = parseFloat(monto) || 0;
+    const qty10Num = parseInt(qty10) || 0;
+    const qty18Num = parseInt(qty18) || 0;
+    const qty27Num = parseInt(qty27) || 0;
+    const qty43Num = parseInt(qty43) || 0;
+
     const queryCheck = `
         SELECT 
             rb.bombonas_10kg, rb.bombonas_18kg, rb.bombonas_27kg, rb.bombonas_43kg,
@@ -570,28 +576,28 @@ app.post('/bombonas/comprar', (req, res) => {
         const disp43 = data.bombonas_43kg - (data.compradas_43kg || 0);
 
         // 1. Validaciones de disponibilidad (Bloqueo si ya no quedan)
-        if (qty10 > 0 && disp10 <= 0) return res.status(400).json({ error: "Ya compró sus bombonas de 10kg." });
-        if (qty18 > 0 && disp18 <= 0) return res.status(400).json({ error: "Ya compró sus bombonas de 18kg." });
-        if (qty27 > 0 && disp27 <= 0) return res.status(400).json({ error: "Ya compró sus bombonas de 27kg." });
-        if (qty43 > 0 && disp43 <= 0) return res.status(400).json({ error: "Ya compró sus bombonas de 43kg." });
+        if (qty10Num > 0 && disp10 <= 0) return res.status(400).json({ error: "Ya compró sus bombonas de 10kg." });
+        if (qty18Num > 0 && disp18 <= 0) return res.status(400).json({ error: "Ya compró sus bombonas de 18kg." });
+        if (qty27Num > 0 && disp27 <= 0) return res.status(400).json({ error: "Ya compró sus bombonas de 27kg." });
+        if (qty43Num > 0 && disp43 <= 0) return res.status(400).json({ error: "Ya compró sus bombonas de 43kg." });
 
         // 2. Validaciones con mensajes dinámicos (Singular / Plural)
-        if (qty10 > disp10) {
+        if (qty10Num > disp10) {
             const msg = disp10 === 1 ? "una sola bombona registrada" : `${disp10} bombonas registradas`;
             return res.status(400).json({ error: `Solo tiene ${msg} de tamaño 10kg.` });
         }
         
-        if (qty18 > disp18) {
+        if (qty18Num > disp18) {
             const msg = disp18 === 1 ? "una sola bombona registrada" : `${disp18} bombonas registradas`;
             return res.status(400).json({ error: `Solo tiene ${msg} de tamaño 18kg.` });
         }
 
-        if (qty27 > disp27) {
+        if (qty27Num > disp27) {
             const msg = disp27 === 1 ? "una sola bombona registrada" : `${disp27} bombonas registradas`;
             return res.status(400).json({ error: `Solo tiene ${msg} de tamaño 27kg.` });
         }
 
-        if (qty43 > disp43) {
+        if (qty43Num > disp43) {
             const msg = disp43 === 1 ? "una sola bombona registrada" : `${disp43} bombonas registradas`;
             return res.status(400).json({ error: `Solo tiene ${msg} de tamaño 43kg.` });
         }
@@ -607,9 +613,10 @@ app.post('/bombonas/comprar', (req, res) => {
 
             const queryPago = `INSERT INTO pagos_bombonas (id_registro, monto_pagado, metodo_pago, cant_10kg, cant_18kg, cant_27kg, cant_43kg, referencia_texto, referencia_foto) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-            db.query(queryPago, [id_registro, monto, metodo, qty10, qty18, qty27, qty43, referencia_texto || null, referencia_foto || null], (errPago) => {
+            db.query(queryPago, [id_registro, montoNum, metodo, qty10Num, qty18Num, qty27Num, qty43Num, referencia_texto || null, referencia_foto || null], (errPago) => {
                 if (errPago) {
-                    console.error('Error SQL al registrar pago:', errPago);
+                    console.error('Error SQL al registrar pago:', errPago.message, errPago.code);
+                    console.error('Datos recibidos:', { id_registro, id_persona, montoNum, metodo, qty10Num, qty18Num, qty27Num, qty43Num });
                     return res.status(500).json({ error: 'Error al registrar el pago.' });
                 }
                 res.json({
