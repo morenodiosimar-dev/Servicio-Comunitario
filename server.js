@@ -111,6 +111,64 @@ db.on('error', (err) => {
     }
 });
 
+// Auto-migración: asegurar AUTO_INCREMENT en tablas (necesario en TiDB)
+async function autoMigrate() {
+    const tablas = [
+        { tabla: 'personas', columna: 'id_persona' },
+        { tabla: 'usuarios', columna: 'id_usuario' },
+        { tabla: 'registro_bombonas', columna: 'id_registro' },
+        { tabla: 'pagos_bombonas', columna: 'id_pago' },
+        { tabla: 'roles', columna: 'id_rol' },
+        { tabla: 'estados_civiles', columna: 'id_estado_civil' }
+    ];
+
+    for (const { tabla, columna } of tablas) {
+        try {
+            // Obtener definición actual de la columna
+            const cols = await new Promise((resolve, reject) => {
+                db.query(
+                    `SELECT COLUMN_TYPE, IS_NULLABLE, EXTRA
+                     FROM INFORMATION_SCHEMA.COLUMNS
+                     WHERE TABLE_SCHEMA = DATABASE()
+                       AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+                    [tabla, columna],
+                    (err, results) => err ? reject(err) : resolve(results)
+                );
+            });
+
+            if (cols.length === 0) {
+                console.warn(`⚠️ Tabla '${tabla}' o columna '${columna}' no existe en TiDB`);
+                continue;
+            }
+
+            const col = cols[0];
+            const yaTieneAI = (col.EXTRA || '').includes('auto_increment');
+
+            if (!yaTieneAI) {
+                const sql = `ALTER TABLE \`${tabla}\` MODIFY COLUMN \`${columna}\` ${col.COLUMN_TYPE} NOT NULL AUTO_INCREMENT`;
+                await new Promise((resolve, reject) => {
+                    db.query(sql, (err) => err ? reject(err) : resolve());
+                });
+                console.log(`✅ AUTO_INCREMENT agregado a ${tabla}.${columna}`);
+            }
+        } catch (e) {
+            // Ignorar si ya tiene AUTO_INCREMENT o si la tabla no existe
+            if (!e.message.includes('Duplicate') && !e.message.includes('already has')) {
+                console.warn(`⚠️ Migración ${tabla}.${columna}:`, e.message);
+            }
+        }
+    }
+    console.log('✅ Auto-migración completada');
+}
+
+// Ejecutar migración después de verificar conexión
+db.getConnection((err, connection) => {
+    if (!err) {
+        connection.release();
+        autoMigrate();
+    }
+});
+
 // Ruta principal
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'login.html'));
