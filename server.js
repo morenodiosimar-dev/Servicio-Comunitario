@@ -111,63 +111,15 @@ db.on('error', (err) => {
     }
 });
 
-// Auto-migración: asegurar AUTO_INCREMENT en tablas (necesario en TiDB)
-async function autoMigrate() {
-    const tablas = [
-        { tabla: 'personas', columna: 'id_persona' },
-        { tabla: 'usuarios', columna: 'id_usuario' },
-        { tabla: 'registro_bombonas', columna: 'id_registro' },
-        { tabla: 'pagos_bombonas', columna: 'id_pago' },
-        { tabla: 'roles', columna: 'id_rol' },
-        { tabla: 'estados_civiles', columna: 'id_estado_civil' }
-    ];
-
-    for (const { tabla, columna } of tablas) {
-        try {
-            // Obtener definición actual de la columna
-            const cols = await new Promise((resolve, reject) => {
-                db.query(
-                    `SELECT COLUMN_TYPE, IS_NULLABLE, EXTRA
-                     FROM INFORMATION_SCHEMA.COLUMNS
-                     WHERE TABLE_SCHEMA = DATABASE()
-                       AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
-                    [tabla, columna],
-                    (err, results) => err ? reject(err) : resolve(results)
-                );
-            });
-
-            if (cols.length === 0) {
-                console.warn(`⚠️ Tabla '${tabla}' o columna '${columna}' no existe en TiDB`);
-                continue;
-            }
-
-            const col = cols[0];
-            const yaTieneAI = (col.EXTRA || '').includes('auto_increment');
-
-            if (!yaTieneAI) {
-                const sql = `ALTER TABLE \`${tabla}\` MODIFY COLUMN \`${columna}\` ${col.COLUMN_TYPE} NOT NULL AUTO_INCREMENT`;
-                await new Promise((resolve, reject) => {
-                    db.query(sql, (err) => err ? reject(err) : resolve());
-                });
-                console.log(`✅ AUTO_INCREMENT agregado a ${tabla}.${columna}`);
-            }
-        } catch (e) {
-            // Ignorar si ya tiene AUTO_INCREMENT o si la tabla no existe
-            if (!e.message.includes('Duplicate') && !e.message.includes('already has')) {
-                console.warn(`⚠️ Migración ${tabla}.${columna}:`, e.message);
-            }
-        }
-    }
-    console.log('✅ Auto-migración completada');
+// Helper: obtener siguiente ID para una tabla (necesario cuando AUTO_INCREMENT no funciona en TiDB)
+function getNextId(tabla, columna) {
+    return new Promise((resolve, reject) => {
+        db.query(`SELECT COALESCE(MAX(\`${columna}\`), 0) + 1 AS nextId FROM \`${tabla}\``, (err, results) => {
+            if (err) return reject(err);
+            resolve(results[0].nextId);
+        });
+    });
 }
-
-// Ejecutar migración después de verificar conexión
-db.getConnection((err, connection) => {
-    if (!err) {
-        connection.release();
-        autoMigrate();
-    }
-});
 
 // Ruta principal
 app.get('/', (req, res) => {
@@ -284,7 +236,7 @@ app.get('/personas/sin-bombonas', (req, res) => {
 });
 
 // CREAR PERSONA
-app.post('/personas', (req, res) => {
+app.post('/personas', async (req, res) => {
     const { cedula, nombre, apellido, sexo, edad, id_estado_civil, celular, carga_familiar, calle, fecha_registro, estatus } = req.body;
     
     if (!cedula || !nombre || !apellido || !sexo) {
@@ -295,21 +247,27 @@ app.post('/personas', (req, res) => {
         return res.status(400).json({ error: 'La cédula debe contener entre 6 y 10 dígitos numéricos.' });
     }
     
-    const query = `INSERT INTO personas (cedula, nombre, apellido, sexo, edad, id_estado_civil, celular, carga_familiar, calle, fecha_registro, estatus) 
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-    
-    db.query(query, [cedula, nombre, apellido, sexo, edad || null, id_estado_civil || 1, celular || null, carga_familiar || 0, calle || null, fecha_registro || null, estatus || 'Activo'], 
-        (err, result) => {
-            if (err) {
-                if (err.code === 'ER_DUP_ENTRY') {
-                    return res.status(409).json({ error: 'Ya existe una persona con esa cédula' });
+    try {
+        const nextId = await getNextId('personas', 'id_persona');
+        const query = `INSERT INTO personas (id_persona, cedula, nombre, apellido, sexo, edad, id_estado_civil, celular, carga_familiar, calle, fecha_registro, estatus) 
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        
+        db.query(query, [nextId, cedula, nombre, apellido, sexo, edad || null, id_estado_civil || 1, celular || null, carga_familiar || 0, calle || null, fecha_registro || null, estatus || 'Activo'], 
+            (err, result) => {
+                if (err) {
+                    if (err.code === 'ER_DUP_ENTRY') {
+                        return res.status(409).json({ error: 'Ya existe una persona con esa cédula' });
+                    }
+                    console.error('Error al crear persona:', err);
+                    return res.status(500).json({ error: 'Error al crear persona' });
                 }
-                console.error('Error al crear persona:', err);
-                return res.status(500).json({ error: 'Error al crear persona' });
+                res.json({ message: 'Usuario registrado correctamente en el sistema.', id_persona: nextId });
             }
-            res.json({ message: 'Usuario registrado correctamente en el sistema.', id_persona: result.insertId });
-        }
-    );
+        );
+    } catch (e) {
+        console.error('Error al generar ID:', e);
+        return res.status(500).json({ error: 'Error al crear persona' });
+    }
 });
 
 // ACTUALIZAR/EDITAR PERSONA
@@ -418,7 +376,7 @@ app.put('/usuarios/cambiar-password', (req, res) => {
 });
 
 // CREAR USUARIO
-app.post('/usuarios', (req, res) => {
+app.post('/usuarios', async (req, res) => {
     const { id_persona, id_rol, usuario_login, password } = req.body;
 
     if (!id_persona || !usuario_login || !password) {
@@ -427,19 +385,25 @@ app.post('/usuarios', (req, res) => {
 
     const hashedPassword = hashPassword(password);
 
-    const query = `INSERT INTO usuarios (id_persona, id_rol, usuario_login, password_hash) 
-                   VALUES (?, ?, ?, ?)`;
+    try {
+        const nextId = await getNextId('usuarios', 'id_usuario');
+        const query = `INSERT INTO usuarios (id_usuario, id_persona, id_rol, usuario_login, password_hash) 
+                       VALUES (?, ?, ?, ?, ?)`;
 
-    db.query(query, [id_persona, id_rol || 2, usuario_login, hashedPassword], (err, result) => {
-        if (err) {
-            if (err.code === 'ER_DUP_ENTRY') {
-                return res.status(409).json({ error: 'El nombre de usuario ya existe' });
+        db.query(query, [nextId, id_persona, id_rol || 2, usuario_login, hashedPassword], (err, result) => {
+            if (err) {
+                if (err.code === 'ER_DUP_ENTRY') {
+                    return res.status(409).json({ error: 'El nombre de usuario ya existe' });
+                }
+                console.error('Error al crear usuario:', err);
+                return res.status(500).json({ error: 'Error al crear usuario' });
             }
-            console.error('Error al crear usuario:', err);
-            return res.status(500).json({ error: 'Error al crear usuario' });
-        }
-        res.json({ message: 'Usuario creado exitosamente', id_usuario: result.insertId });
-    });
+            res.json({ message: 'Usuario creado exitosamente', id_usuario: nextId });
+        });
+    } catch (e) {
+        console.error('Error al generar ID:', e);
+        return res.status(500).json({ error: 'Error al crear usuario' });
+    }
 });
 
 // OBTENER ROLES
@@ -512,20 +476,25 @@ app.get('/bombonas/totales', (req, res) => {
 
 // REGISTRAR BOMBONAS
 
-app.post('/bombonas/registrar', (req, res) => {
+app.post('/bombonas/registrar', async (req, res) => {
     const { id_persona, bombonas_10kg, bombonas_18kg, bombonas_27kg, bombonas_43kg } = req.body;
 
     if (!id_persona) return res.status(400).json({ error: 'Persona no seleccionada' });
 
-    const queryInsert = `INSERT INTO registro_bombonas (id_persona, bombonas_10kg, bombonas_18kg, bombonas_27kg, bombonas_43kg) VALUES (?, ?, ?, ?, ?)`;
-    
-    db.query(queryInsert, [id_persona, bombonas_10kg || 0, bombonas_18kg || 0, bombonas_27kg || 0, bombonas_43kg || 0], (errInsert, resultInsert) => {
-        if (errInsert) {
-            console.error('Error SQL al insertar:', errInsert);
-            return res.status(500).json({ error: 'Error al registrar las bombonas.' });
-        }
-        res.json({ message: '¡Inventario registrado con éxito!' });
-    });
+    try {
+        const nextId = await getNextId('registro_bombonas', 'id_registro');
+        const queryInsert = `INSERT INTO registro_bombonas (id_registro, id_persona, bombonas_10kg, bombonas_18kg, bombonas_27kg, bombonas_43kg) VALUES (?, ?, ?, ?, ?, ?)`;
+        db.query(queryInsert, [nextId, id_persona, bombonas_10kg || 0, bombonas_18kg || 0, bombonas_27kg || 0, bombonas_43kg || 0], (errInsert, resultInsert) => {
+            if (errInsert) {
+                console.error('Error SQL al insertar:', errInsert);
+                return res.status(500).json({ error: 'Error al registrar las bombonas.' });
+            }
+            res.json({ message: '¡Inventario registrado con éxito!' });
+        });
+    } catch (e) {
+        console.error('Error al generar ID:', e);
+        return res.status(500).json({ error: 'Error al registrar las bombonas.' });
+    }
 });
 
 

@@ -100,10 +100,39 @@ function mostrarAlertaFormulario(form, mensaje) {
     alerta.style.display = 'flex';
 }
 
+function obtenerNombreCampo(campo) {
+    const id = campo.id || '';
+    const mapa = {
+        'p-cedula': 'Cédula', 'edit-cedula': 'Cédula',
+        'p-nombre': 'Nombre', 'edit-nombre': 'Nombre',
+        'p-apellido': 'Apellido', 'edit-apellido': 'Apellido',
+        'p-sexo': 'Sexo', 'edit-sexo': 'Sexo',
+        'p-edad': 'Edad', 'edit-edad': 'Edad',
+        'p-civil': 'Estado Civil', 'edit-civil': 'Estado Civil',
+        'p-celular': 'Celular', 'edit-celular': 'Celular',
+        'p-carga': 'Carga Familiar', 'edit-carga': 'Carga Familiar',
+        'p-calle': 'Calle', 'edit-calle': 'Calle',
+        'p-fecha': 'Fecha de Registro', 'edit-fecha': 'Fecha de Registro',
+        'p-estatus': 'Estatus', 'edit-estatus': 'Estatus',
+        'u-cedula': 'Cédula de Persona',
+        'u-login': 'Usuario',
+        'u-password': 'Contraseña',
+        'u-rol': 'Rol',
+        'pwd-actual': 'Contraseña Actual',
+        'pwd-nueva': 'Nueva Contraseña',
+        'pwd-confirmar': 'Confirmar Contraseña'
+    };
+    if (mapa[id]) return mapa[id];
+    const label = campo.closest('.form-group')?.querySelector('label');
+    if (label) return label.textContent.trim();
+    return campo.name || id || 'Campo';
+}
+
 function validarFormulario(form, reglasExtra = {}) {
     limpiarErroresFormulario(form);
     let primerError = null;
     let hayErrores = false;
+    const camposFaltantes = [];
 
     const campos = form.querySelectorAll('input, select, textarea');
     campos.forEach(campo => {
@@ -116,15 +145,17 @@ function validarFormulario(form, reglasExtra = {}) {
             marcarCampoError(campo, 'Este campo es obligatorio');
             if (!primerError) primerError = campo;
             hayErrores = true;
+            camposFaltantes.push(obtenerNombreCampo(campo));
             return;
         }
 
         if (valor && campo.pattern) {
             const regex = new RegExp(campo.pattern);
             if (!regex.test(valor)) {
-                marcarCampoError(campo, campo.title || 'Falta llenar este campo');
+                marcarCampoError(campo, campo.title || 'Formato inválido');
                 if (!primerError) primerError = campo;
                 hayErrores = true;
+                camposFaltantes.push(obtenerNombreCampo(campo));
             }
         }
 
@@ -134,12 +165,21 @@ function validarFormulario(form, reglasExtra = {}) {
                 marcarCampoError(campo, resultado);
                 if (!primerError) primerError = campo;
                 hayErrores = true;
+                camposFaltantes.push(obtenerNombreCampo(campo));
             }
         }
     });
 
     if (hayErrores) {
-        mostrarAlertaFormulario(form, 'Debe completar todos los campos obligatorios antes de continuar.');
+        let mensaje;
+        if (camposFaltantes.length === 1) {
+            mensaje = `El campo "${camposFaltantes[0]}" es obligatorio.`;
+        } else if (camposFaltantes.length <= 3) {
+            mensaje = `Faltan campos: ${camposFaltantes.join(', ')}.`;
+        } else {
+            mensaje = `Faltan ${camposFaltantes.length} campos obligatorios: ${camposFaltantes.slice(0, 3).join(', ')} y otros.`;
+        }
+        mostrarAlertaFormulario(form, mensaje);
         if (primerError) {
             const visible = obtenerCampoVisible(primerError);
             visible.scrollIntoView({ behavior: 'smooth', block: 'center' });
