@@ -799,15 +799,21 @@ function abrirModalEditar(id_persona, cedula, nombre, apellido, sexo, edad, id_e
     document.getElementById("edit-estatus").value = estatus;
     
     if (fecha_registro) {
-        const fecha = new Date(fecha_registro);
-        const año = fecha.getFullYear();
-        const mes = String(fecha.getMonth() + 1).padStart(2, '0');
-        const dia = String(fecha.getDate()).padStart(2, '0');
+        let fecha;
+        if (typeof fecha_registro === 'string' && fecha_registro.includes('-')) {
+            fecha = fecha_registro.split('T')[0];
+        } else {
+            const d = new Date(fecha_registro);
+            const año = d.getFullYear();
+            const mes = String(d.getMonth() + 1).padStart(2, '0');
+            const dia = String(d.getDate()).padStart(2, '0');
+            fecha = `${año}-${mes}-${dia}`;
+        }
         const fechaInput = document.getElementById("edit-fecha");
         if (fechaInput._flatpickr) {
-            fechaInput._flatpickr.setDate(`${año}-${mes}-${dia}`, true);
+            fechaInput._flatpickr.setDate(fecha, true);
         } else {
-            fechaInput.value = `${año}-${mes}-${dia}`;
+            fechaInput.value = fecha;
         }
     } else {
         const fechaInput = document.getElementById("edit-fecha");
@@ -857,11 +863,15 @@ if (formEditar) {
         const carga_familiar = document.getElementById("edit-carga").value;
         const calle = document.getElementById("edit-calle").value.trim();
         const estatus = document.getElementById("edit-estatus").value;
-        const fecha_registro = document.getElementById("edit-fecha").value;
         const fechaInput = document.getElementById("edit-fecha");
-        let fechaFinal = fecha_registro;
-        if (fechaInput._flatpickr && fechaInput._flatpickr.selectedDates[0]) {
-            fechaFinal = fechaInput._flatpickr.selectedDates[0].toISOString().split('T')[0];
+        let fechaFinal = '';
+        if (fechaInput._flatpickr && fechaInput._flatpickr.selectedDates && fechaInput._flatpickr.selectedDates.length > 0) {
+            fechaFinal = fechaInput._flatpickr.formatDate(fechaInput._flatpickr.selectedDates[0], 'Y-m-d');
+        } else if (fechaInput._flatpickr && fechaInput._flatpickr.altInput && fechaInput._flatpickr.altInput.value) {
+            const partes = fechaInput._flatpickr.altInput.value.trim().split('/');
+            if (partes.length === 3) fechaFinal = `${partes[2]}-${partes[1]}-${partes[0]}`;
+        } else {
+            fechaFinal = document.getElementById("edit-fecha").value;
         }
 
         const regexSoloLetas = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/; 

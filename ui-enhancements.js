@@ -20,9 +20,14 @@ function obtenerValorCampo(campo) {
     if (!campo) return '';
 
     if (campo._flatpickr) {
-        return campo._flatpickr.selectedDates.length > 0
-            ? campo._flatpickr.formatDate(campo._flatpickr.selectedDates[0], 'Y-m-d')
-            : (campo.value || '').trim();
+        if (campo._flatpickr.selectedDates && campo._flatpickr.selectedDates.length > 0) {
+            return campo._flatpickr.formatDate(campo._flatpickr.selectedDates[0], 'Y-m-d');
+        }
+        if (campo._flatpickr.altInput && campo._flatpickr.altInput.value) {
+            return campo._flatpickr.altInput.value.trim();
+        }
+        if (campo.value) return campo.value.trim();
+        return '';
     }
 
     if (campo.tomselect) {

@@ -790,10 +790,14 @@
 
           const alertBox = document.getElementById("alerta-persona");
           const fechaInput = document.getElementById("p-fecha");
-          let fechaValor = fechaInput.value;
-          if (fechaInput._flatpickr) {
-            const sel = fechaInput._flatpickr.selectedDates[0];
-            if (sel) fechaValor = sel.toISOString().split('T')[0];
+          let fechaValor = '';
+          if (fechaInput._flatpickr && fechaInput._flatpickr.selectedDates && fechaInput._flatpickr.selectedDates.length > 0) {
+            fechaValor = fechaInput._flatpickr.formatDate(fechaInput._flatpickr.selectedDates[0], 'Y-m-d');
+          } else if (fechaInput._flatpickr && fechaInput._flatpickr.altInput && fechaInput._flatpickr.altInput.value) {
+            const partes = fechaInput._flatpickr.altInput.value.trim().split('/');
+            if (partes.length === 3) fechaValor = `${partes[2]}-${partes[1]}-${partes[0]}`;
+          } else {
+            fechaValor = fechaInput.value;
           }
 
           const formData = {
