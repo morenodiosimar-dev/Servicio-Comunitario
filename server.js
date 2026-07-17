@@ -111,6 +111,13 @@ db.on('error', (err) => {
     }
 });
 
+process.on('uncaughtException', (err) => {
+    console.error('❌ EXCEPCIÓN NO CAPTURADA:', err.message, err.stack);
+});
+process.on('unhandledRejection', (reason) => {
+    console.error('❌ PROMESA NO MANEJADA:', reason);
+});
+
 // Helper: obtener siguiente ID para una tabla (necesario cuando AUTO_INCREMENT no funciona en TiDB)
 function getNextId(tabla, columna) {
     return new Promise((resolve, reject) => {
@@ -548,7 +555,9 @@ app.delete('/bombonas/eliminar/:id', (req, res) => {
 });
 // RUTA PARA REGISTRAR COMPRA Y PAGO
 app.post('/bombonas/comprar', (req, res) => {
+    try {
     const { id_registro, id_persona, qty10, qty18, qty27, qty43, monto, metodo, referencia_texto, referencia_foto } = req.body;
+    console.log('[COMPRAR] Body recibido:', JSON.stringify(req.body));
 
     const montoNum = parseFloat(monto) || 0;
     const qty10Num = parseInt(qty10) || 0;
@@ -627,6 +636,12 @@ app.post('/bombonas/comprar', (req, res) => {
             });
         });
     });
+    } catch (e) {
+        console.error('[COMPRAR] Excepción capturada:', e.message, e.stack);
+        if (!res.headersSent) {
+            return res.status(500).json({ error: 'Error interno del servidor.' });
+        }
+    }
 });
 // RUTA PARA OBTENER EL HISTORIAL DE VENTAS REALES (Con soporte para filtrar por calle y periodo)
 app.get('/bombonas/historial-ventas', (req, res) => {
@@ -836,6 +851,14 @@ app.get('/api/usuario/ventas-calle', (req, res) => {
         });
     });
 });
+// Express error handler
+app.use((err, req, res, next) => {
+    console.error('❌ Error no manejado:', err.message, err.stack);
+    if (!res.headersSent) {
+        return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
 });
