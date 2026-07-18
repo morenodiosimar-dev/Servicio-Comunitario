@@ -825,14 +825,13 @@
             const result = await response.json();
 
             if (response.ok) {
-              limpiarErroresFormulario(form);
               alertBox.style.display = "none";
               mostrarMensajeExito(
                 "¡Registro confirmado!",
                 result.message || "El usuario se registró correctamente en el sistema.",
                 "fa-circle-check"
               );
-              e.target.reset();
+              resetFormularioLimpio(form);
               cargarEstadisticas();
             } else {
               alertBox.textContent = result.error || "Error al guardar";
@@ -901,7 +900,7 @@
                   : "El administrador ha sido registrado correctamente y ya puede acceder al sistema.",
                 esManzanera ? "fa-user-tie" : "fa-user-shield"
               );
-              e.target.reset();
+              resetFormularioLimpio(form);
               cargarEstadisticas();
             } else {
               alertBox.textContent = result.error || "Error al crear usuario";

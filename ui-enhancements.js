@@ -251,6 +251,23 @@ function refreshTomSelect(selectEl) {
     }
 }
 
+function resetFormularioLimpio(form) {
+    if (!form) return;
+    form.reset();
+    form.querySelectorAll('select').forEach(select => {
+        if (select.tomselect) {
+            select.tomselect.clear();
+            select.tomselect.sync();
+        }
+    });
+    form.querySelectorAll('input').forEach(input => {
+        if (input._flatpickr) {
+            input._flatpickr.clear();
+        }
+    });
+    limpiarErroresFormulario(form);
+}
+
 /* ─── Toggle contraseña ─── */
 function crearTogglePassword(input) {
     const wrapper = document.createElement('div');
