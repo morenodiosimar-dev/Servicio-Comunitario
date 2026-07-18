@@ -64,35 +64,26 @@ app.use((req, res, next) => {
 
 // Conexión a MySQL con Pool (Render/TiDB)
 let dbConfig;
-if (process.env.DATABASE_URL) {
-    const url = new URL(process.env.DATABASE_URL);
-    dbConfig = {
-        host: url.hostname,
-        port: parseInt(url.port) || 4000,
-        user: decodeURIComponent(url.username),
-        password: decodeURIComponent(url.password),
-        database: url.pathname.substring(1),
-        ssl: { rejectUnauthorized: false },
-        waitForConnections: true,
-        connectionLimit: 10,
-        queueLimit: 0,
-        enableKeepAlive: true,
-        keepAliveInitialDelay: 0
-    };
-    console.log('📡 Conectando a TiDB:', dbConfig.host, dbConfig.database);
-} else {
-    dbConfig = {
-        host: 'localhost',
-        user: 'root',
-        password: '',
-        database: 'servicio_comunitario',
-        waitForConnections: true,
-        connectionLimit: 10,
-        queueLimit: 0
-    };
+if (!process.env.DATABASE_URL) {
+    console.error('❌ ERROR CRÍTICO: La variable DATABASE_URL no está definida en Vercel.');
+    process.exit(1); // Detiene el despliegue para que sepas que falta la variable
 }
 
+const url = new URL(process.env.DATABASE_URL);
+const dbConfig = {
+    host: url.hostname,
+    port: parseInt(url.port) || 4000,
+    user: decodeURIComponent(url.username),
+    password: decodeURIComponent(url.password),
+    database: url.pathname.substring(1),
+    ssl: { rejectUnauthorized: false },
+    waitForConnections: true,
+    connectionLimit: 10
+};
+
 const db = mysql.createPool(dbConfig);
+
+
 
 db.getConnection((err, connection) => {
     if (err) {
