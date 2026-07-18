@@ -63,7 +63,7 @@ app.use((req, res, next) => {
 });
 
 // Conexión a MySQL con Pool (Render/TiDB)
-let dbConfig;
+
 if (!process.env.DATABASE_URL) {
     console.error('❌ ERROR CRÍTICO: La variable DATABASE_URL no está definida en Vercel.');
     process.exit(1); // Detiene el despliegue para que sepas que falta la variable
@@ -860,8 +860,9 @@ app.use((err, req, res, next) => {
         return res.status(500).json({ error: 'Error interno del servidor.' });
     }
 });
-
+/*
 app.listen(PORT, () => {
     console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
-});
+});*/
+
 module.exports = app;
