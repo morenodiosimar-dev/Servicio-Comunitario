@@ -34,8 +34,7 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use(express.static(path.join(__dirname, '../')));
-
+app.use(express.static(path.join(process.cwd(), './')));
 // Rate limiting para login
 const loginAttempts = {};
 const RATE_LIMIT_WINDOW = 15 * 60 * 1000;
