@@ -61,30 +61,27 @@ app.use((req, res, next) => {
     }
     next();
 });
+// --- CONFIGURACIÓN DE BASE DE LA NUBE (TiDB Cloud) ---
+let db;
 
-// Conexión a MySQL con Pool (Render/TiDB)
-let dbConfig; 
-
-if (!process.env.DATABASE_URL) {
-    console.error('❌ ERROR CRÍTICO: La variable DATABASE_URL no está definida.');
-    // No uses process.exit(1) aquí, Vercel se encarga del ciclo de vida.
-} else {
-    const url = new URL(process.env.DATABASE_URL);
-    dbConfig = {
-        host: url.hostname,
-        port: parseInt(url.port) || 4000,
-        user: decodeURIComponent(url.username),
-        password: decodeURIComponent(url.password),
-        database: url.pathname.substring(1),
-        ssl: { rejectUnauthorized: false },
+try {
+    const dbConfig = {
+        host: process.env.DB_HOST || 'gateway01.us-east-1.prod.aws.tidbcloud.com',
+        port: parseInt(process.env.DB_PORT) || 4000,
+        user: process.env.DB_USER || 'FJ7DNsLa2D92cYd.root',
+        password: process.env.DB_PASSWORD || '',
+        database: process.env.DB_NAME || 'servicio_comunitario',
+        ssl: { rejectUnauthorized: false }, // Requerido para TiDB Cloud
         waitForConnections: true,
         connectionLimit: 10
     };
+
+    db = mysql.createPool(dbConfig);
+    console.log('✅ Pool de conexión creado exitosamente');
+
+} catch (error) {
+    console.error('❌ Error al configurar el pool:', error.message);
 }
-
-// Inicializa el pool solo si dbConfig fue definido
-const db = mysql.createPool(dbConfig);
-
 
 
 db.getConnection((err, connection) => {
@@ -109,9 +106,7 @@ process.on('uncaughtException', (err) => {
 });
 process.on('unhandledRejection', (reason) => {
     console.error('❌ PROMESA NO MANEJADA:', reason);
-});
-
-// Helper: obtener siguiente ID para una tabla (necesario cuando AUTO_INCREMENT no funciona en TiDB)
+});// Helper: obtener siguiente ID para una tabla (necesario cuando AUTO_INCREMENT no funciona en TiDB)
 function getNextId(tabla, columna) {
     return new Promise((resolve, reject) => {
         db.query(`SELECT COALESCE(MAX(\`${columna}\`), 0) + 1 AS nextId FROM \`${tabla}\``, (err, results) => {
