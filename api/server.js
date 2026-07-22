@@ -118,7 +118,7 @@ function getNextId(tabla, columna) {
 
 // Ruta principal
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'login.html'));
+    res.sendFile(path.join(__dirname, '../login.html'));
 });
 
 // LOGIN - Acepta usuario o cédula
